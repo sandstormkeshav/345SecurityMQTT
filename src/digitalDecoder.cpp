@@ -1,5 +1,6 @@
 #include "digitalDecoder.h"
 #include "mqtt.h"
+#include "mqtt_config.h"
 
 #include <iostream>
 #include <fstream>
@@ -26,7 +27,10 @@
 #define RX_GOOD_MIN_SEC (60)
 #define UPDATE_MIN_SEC (60)
 
-static const char BASE_TOPIC[] = "/security/sensors345/";
+#define BASE_TOPIC "/security/sensors345/"
+#define SENSOR_TOPIC BASE_TOPIC"sensor/"
+#define KEYFOB_TOPIC BASE_TOPIC"keyfob/"
+#define KEYPAD_TOPIC BASE_TOPIC"keypad/"
 
 void DigitalDecoder::setRxGood(bool state)
 {
@@ -49,92 +53,186 @@ void DigitalDecoder::setRxGood(bool state)
     lastRxGoodUpdateTime = now.tv_sec;
 }
 
-void DigitalDecoder::updateDeviceState(uint32_t serial, uint8_t state)
+void DigitalDecoder::updateKeyfobState(uint32_t serial, uint64_t payload)
 {
-    deviceState_t ds;
-    uint8_t alarmState;
-    std::ostringstream alarmTopic;
-    std::ostringstream statusTopic;
-    alarmTopic << BASE_TOPIC << serial << "/alarm";
-    statusTopic << BASE_TOPIC << serial << "/status";
-    
-    // Extract prior info
-    if(deviceStateMap.count(serial))
+    if (payload == lastKeyfobPayload)
     {
-        ds = deviceStateMap[serial];
+        return;
+    }
+
+    std::ostringstream topic;
+    topic << KEYFOB_TOPIC << serial << "/keypress";
+    char c = ((payload & 0x000000F00000) >> 20);
+    std::string key;
+    if (c == 0x1)
+    {
+        key = "AWAY";
+    }
+    else if (c == 0x2)
+    {
+        key = "DISARM";
+    }
+    else if (c == 0x4)
+    {
+        key = "STAY";
+    }
+    else if (c == 0x8)
+    {
+        key = "AUX";
     }
     else
     {
-        ds.minAlarmStateSeen = 0xFF;
-        ds.lastUpdateTime = 0;
-        ds.lastAlarmTime = 0;
+        key = "UNK";
     }
-    
-    // Update minimum/OK state if needed
-    // Look only at the non-tamper loop bits
-    alarmState = (state & 0xB0);
-    if(alarmState < ds.minAlarmStateSeen) ds.minAlarmStateSeen = alarmState; 
-    
-    // Decode alarm bits
-    // We just alarm on any active loop that has been previously observed as inactive
-    // This hopefully avoids having to use per-sensor configuration
-    ds.alarm = (alarmState > ds.minAlarmStateSeen);
-    
-    // Decode tamper bit
-    ds.tamper = (state & 0x40);
-    
-    // Decode battery low bit    
-    ds.batteryLow = (state & 0x08);
-    
-    // Timestamp
+    mqtt.send(topic.str().c_str(), key.c_str());
+
+    lastKeyfobPayload = payload;
+}
+
+void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
+{
     timeval now;
     gettimeofday(&now, nullptr);
-    ds.timeout = false;
-    
-    if(ds.alarm) ds.lastAlarmTime = now.tv_sec;
 
-    // Put the answer back in the map
-    deviceStateMap[serial] = ds;
-    
-    // Send the notification if something changed or enough time has passed
-    if(state != ds.lastRawState || (now.tv_sec - ds.lastUpdateTime) > UPDATE_MIN_SEC)
+    struct keypadState_t lastState;
+    struct keypadState_t currentState;
+
+    currentState.lastUpdateTime = now.tv_sec;
+    currentState.hasLostSupervision = false;
+
+    currentState.sequence = (payload & 0xF00000000000) >> 44;
+    currentState.lowBat = payload & 0x000000020000;
+
+    auto found = keypadStatusMap.find(serial);
+    if (found == keypadStatusMap.end())
     {
-        std::ostringstream status;
-
-        // Send alarm state
-        mqtt.send(alarmTopic.str().c_str(), ds.alarm ? "ALARM" : "OK");
-
-        // Build and send combined fault status
-        if (!ds.tamper && !ds.batteryLow)
-        {
-            status << "OK";
-        } else {
-
-            if (ds.tamper)
-            {
-                status << "TAMPER ";
-            }
-            
-            if (ds.batteryLow)
-            {
-                status << "LOWBATT";
-            }
-        }
-        mqtt.send(statusTopic.str().c_str(), status.str().c_str());
-
-        deviceStateMap[serial].lastUpdateTime = now.tv_sec;
-        deviceStateMap[serial].lastRawState = state;
-
-        checkForTimeouts();
-
-        for(const auto &dd : deviceStateMap)
-        {
-            printf("%sDevice %7u: %s %s %s %s\n",dd.first==serial ? "*" : " ", dd.first, dd.second.alarm ? "ALARM" : "OK", dd.second.tamper ? "TAMPER" : "", dd.second.batteryLow ? "LOWBATT" : "", dd.second.timeout ? "TIMEOUT" : "");
-        }
-        std::cout << std::endl;
-
+        lastState.sequence = 0xff;
+        lastState.lowBat = !currentState.lowBat;
     }
-    
+    else
+    {
+        lastState = found->second;
+    }
+
+    if (currentState.sequence != lastState.sequence)
+    {
+        std::ostringstream topic;
+        topic << KEYPAD_TOPIC << serial << "/keypress";
+        char c = ((payload & 0x000000F00000) >> 20);
+        std::string key;
+        if (c == 0xA)
+        {
+            key = "*";
+        }
+        else if (c == 0xB)
+        {
+            key = "0";
+        }
+        else if (c == 0xC)
+        {
+            key = "#";
+        }
+        else if (c == 0xD)
+        {
+            key = "STAY";
+        }
+        else if (c == 0xE)
+        {
+            key = "AWAY";
+        }
+        else if (c == 0xF)
+        {
+            key = "FIRE";
+        }
+        else if (c == 0x0)
+        {
+            key = "POLICE";
+        }
+        else
+        {
+            key = (c + '0');
+        }
+        mqtt.send(topic.str().c_str(), key.c_str());
+    }
+
+    keypadStatusMap[serial] = currentState;
+}
+
+void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
+{
+    timeval now;
+    gettimeofday(&now, nullptr);
+
+    struct sensorState_t lastState;
+    struct sensorState_t currentState;
+
+    currentState.lastUpdateTime = now.tv_sec;
+    currentState.hasLostSupervision = false;
+
+    currentState.loop1 = payload & 0x000000800000;
+    currentState.loop2 = payload & 0x000000200000;
+    currentState.loop3 = payload & 0x000000100000;
+    currentState.tamper = payload & 0x000000400000;
+    currentState.lowBat = payload & 0x000000020000;
+
+    bool supervised = payload & 0x000000040000;
+
+    //std::cout << "Payload:" << std::hex << payload << " Serial:" << std::dec << serial << std::boolalpha << " Loop1:" << currentState.loop1 << std::endl;
+
+    auto found = sensorStatusMap.find(serial);
+    if (found == sensorStatusMap.end())
+    {
+        // if there wasn't a state, make up a state that is opposite to our current state
+        // so that we send everything.
+
+        lastState.hasLostSupervision = !currentState.hasLostSupervision;
+        lastState.loop1 = !currentState.loop1;
+        lastState.loop2 = !currentState.loop2;
+        lastState.loop3 = !currentState.loop3;
+        lastState.tamper = !currentState.tamper;
+        lastState.lowBat = !currentState.lowBat;
+    }
+    else
+    {
+        lastState = found->second;
+    }
+
+    if ((currentState.loop1 != lastState.loop1) || supervised)
+    {
+        std::ostringstream topic;
+        topic << SENSOR_TOPIC << serial << "/loop1";
+        mqtt.send(topic.str().c_str(), currentState.loop1 ? OPEN_SENSOR_MSG : CLOSED_SENSOR_MSG, supervised ? 0 : 1);
+    }
+
+    if ((currentState.loop2 != lastState.loop2) || supervised)
+    {
+        std::ostringstream topic;
+        topic << SENSOR_TOPIC << serial << "/loop2";
+        mqtt.send(topic.str().c_str(), currentState.loop2 ? OPEN_SENSOR_MSG : CLOSED_SENSOR_MSG, supervised ? 0 : 1);
+    }
+
+    if ((currentState.loop3 != lastState.loop3) || supervised)
+    {
+        std::ostringstream topic;
+        topic << SENSOR_TOPIC << serial << "/loop3";
+        mqtt.send(topic.str().c_str(), currentState.loop3 ? OPEN_SENSOR_MSG : CLOSED_SENSOR_MSG, supervised ? 0 : 1);
+    }
+
+    if ((currentState.tamper != lastState.tamper) || supervised)
+    {
+        std::ostringstream topic;
+        topic << SENSOR_TOPIC << serial << "/tamper";
+        mqtt.send(topic.str().c_str(), currentState.tamper ? TAMPER_MSG : UNTAMPERED_MSG, supervised ? 0 : 1);
+    }
+
+    if ((currentState.lowBat != lastState.lowBat) || supervised)
+    {
+        std::ostringstream topic;
+        topic << SENSOR_TOPIC << serial << "/battery";
+        mqtt.send(topic.str().c_str(), currentState.lowBat ? LOW_BAT_MSG : OK_BAT_MSG, supervised ? 0 : 1);
+    }
+
+    sensorStatusMap[serial] = currentState;
 }
 
 /* Checks all devices for last time updated */
@@ -146,15 +244,15 @@ void DigitalDecoder::checkForTimeouts()
     status << "TIMEOUT";
     gettimeofday(&now, nullptr);
 
-    for(const auto &dd : deviceStateMap)
+    for(const auto &dd : sensorStatusMap)
     {
-        if ((now.tv_sec - dd.second.lastUpdateTime) > SENSOR_TIMEOUT_MIN*60) 
+        if ((now.tv_sec - dd.second.lastUpdateTime) > SENSOR_TIMEOUT_MIN*60)
         {
-            if (false == dd.second.timeout)
+            if (false == dd.second.hasLostSupervision)
             {
                 std::ostringstream statusTopic;
 
-                deviceStateMap[dd.first].timeout = true;
+                sensorStatusMap[dd.first].hasLostSupervision = true;
                 statusTopic << BASE_TOPIC << dd.first << "/status";
                 mqtt.send(statusTopic.str().c_str(), status.str().c_str());
             }
@@ -162,60 +260,65 @@ void DigitalDecoder::checkForTimeouts()
     }
 }
 
-void DigitalDecoder::handlePayload(uint64_t payload)
+bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
 {
     uint64_t sof = (payload & 0xF00000000000) >> 44;
     uint64_t ser = (payload & 0x0FFFFF000000) >> 24;
     uint64_t typ = (payload & 0x000000FF0000) >> 16;
     uint64_t crc = (payload & 0x00000000FFFF) >>  0;
-    
+
     //
     // Check CRC
     //
-    uint64_t polynomial;
-    if (sof == 0x2 || sof == 0xA) {
-        // 2GIG brand
-        polynomial = 0x18050;
-    } else {
-        // sof == 0x8
-        polynomial = 0x18005;
+    if (polynomial == 0)
+    {
+        if (sof == 0x2 || sof == 0xA) {
+            // 2GIG brand
+            polynomial = 0x18050;
+        } else {
+            // sof == 0x8
+            polynomial = 0x18005;
+        }
     }
     uint64_t sum = payload & (~SYNC_MASK);
     uint64_t current_divisor = polynomial << 31;
-    
+
     while(current_divisor >= polynomial)
     {
-#ifdef __arm__
+        #ifdef __arm__
         if(__builtin_clzll(sum) == __builtin_clzll(current_divisor))
-#else        
+        #else
         if(__builtin_clzl(sum) == __builtin_clzl(current_divisor))
-#endif
+        #endif
         {
             sum ^= current_divisor;
-        }        
+        }
         current_divisor >>= 1;
     }
-    
-    const bool valid = (sum == 0);
-    
+
+    return (sum == 0);
+}
+
+void DigitalDecoder::handlePayload(uint64_t payload)
+{
+    uint64_t ser = (payload & 0x0FFFFF000000) >> 24;
+    uint64_t typ = (payload & 0x000000FF0000) >> 16;
+
+    const bool validSensorPacket = isPayloadValid(payload);
+    const bool validKeypadPacket = isPayloadValid(payload, 0x18050) && (typ & 0x01);
+    const bool validKeyfobPacket = isPayloadValid(payload, 0x18050) && (typ & 0x02);
+
     //
     // Print Packet
     //
  #ifdef __arm__
-     if(valid)    
-         printf("Valid Payload: %llX (Serial %llu, Status %llX)", payload, ser, typ);
-     else
-         printf("Invalid Payload: %llX", payload);
- #else    
-     if(valid)    
-         printf("Valid Payload: %lX (Serial %lu, Status %lX)", payload, ser, typ);
-     else
-         printf("Invalid Payload: %lX", payload);
+    printf("%s Payload: %llX (Serial %llu/%llX, Status %llX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
+ #else
+    printf("%s Payload: %lX (Serial %lu/%lX, Status %lX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
  #endif
-     std::cout << std::endl;
-    
+
     packetCount++;
-    if(!valid)
+    if(!validSensorPacket && !validKeypadPacket && !validKeyfobPacket)
     {
         errorCount++;
         printf("%u/%u packets failed CRC", errorCount, packetCount);
@@ -225,12 +328,22 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     //
     // Tell the world
     //
-    if(valid)
+    if(validSensorPacket && keypadStatusMap.find(ser) == keypadStatusMap.end())
     {
         // We received a valid packet so the receiver must be working
         setRxGood(true);
         // Update the device
-        updateDeviceState(ser, typ);
+        updateSensorState(ser, payload);
+    }
+    else if (validKeypadPacket)
+    {
+        setRxGood(true);
+        updateKeypadState(ser, payload);
+    }
+    else if (validKeyfobPacket)
+    {
+        setRxGood(true);
+        updateKeyfobState(ser, payload);
     }
 }
 
@@ -239,16 +352,16 @@ void DigitalDecoder::handlePayload(uint64_t payload)
 void DigitalDecoder::handleBit(bool value)
 {
     static uint64_t payload = 0;
-    
+
     payload <<= 1;
     payload |= (value ? 1 : 0);
-    
+
 //#ifdef __arm__
 //    printf("Got bit: %d, payload is now %llX\n", value?1:0, payload);
 //#else
 //    printf("Got bit: %d, payload is now %lX\n", value?1:0, payload);
-//#endif     
-    
+//#endif
+
     if((payload & SYNC_MASK) == SYNC_PATTERN)
     {
         handlePayload(payload);
@@ -265,9 +378,9 @@ void DigitalDecoder::decodeBit(bool value)
         HIGH_PHASE_A,
         HIGH_PHASE_B
     };
-    
+
     static ManchesterState state = LOW_PHASE_A;
-    
+
     switch(state)
     {
         case LOW_PHASE_A:
@@ -298,21 +411,21 @@ void DigitalDecoder::decodeBit(bool value)
 void DigitalDecoder::handleData(char data)
 {
     static const int samplesPerBit = 8;
-    
-        
+
+
     if(data != 0 && data != 1) return;
-        
+
     const bool thisSample = (data == 1);
-    
+
     if(thisSample == lastSample)
     {
         samplesSinceEdge++;
-        
+
         //if(samplesSinceEdge < 100)
         //{
         //    printf("At %d for %u\n", thisSample?1:0, samplesSinceEdge);
         //}
-        
+
         if((samplesSinceEdge % samplesPerBit) == (samplesPerBit/2))
         {
             // This Sample is a new bit

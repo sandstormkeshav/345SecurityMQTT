@@ -10,16 +10,20 @@ class DigitalDecoder
 {
   public:
     DigitalDecoder(Mqtt &mqtt_init) : mqtt(mqtt_init) {}
-    
+
     void handleData(char data);
     void setRxGood(bool state);
 
-    
+protected:
+    bool isPayloadValid(uint64_t payload, uint64_t polynomial=0) const;
+
   private:
 
     void writeDeviceState();
     void sendDeviceState();
-    void updateDeviceState(uint32_t serial, uint8_t state);
+    void updateSensorState(uint32_t serial, uint64_t payload);
+    void updateKeypadState(uint32_t serial, uint64_t payload);
+    void updateKeyfobState(uint32_t serial, uint64_t payload);
     void handlePayload(uint64_t payload);
     void handleBit(bool value);
     void decodeBit(bool value);
@@ -32,23 +36,31 @@ class DigitalDecoder
     Mqtt &mqtt;
     uint32_t packetCount = 0;
     uint32_t errorCount = 0;
-    
-    struct deviceState_t
+
+    struct sensorState_t
     {
         uint64_t lastUpdateTime;
-        uint64_t lastAlarmTime;
-        
-        uint8_t lastRawState;
-        
+        bool hasLostSupervision;
+
+        bool loop1;
+        bool loop2;
+        bool loop3;
         bool tamper;
-        bool alarm;
-        bool batteryLow;
-        bool timeout;
-        
-        uint8_t minAlarmStateSeen;
+        bool lowBat;
     };
 
-    std::map<uint32_t, deviceState_t> deviceStateMap;
+    struct keypadState_t
+    {
+        uint64_t lastUpdateTime;
+        bool hasLostSupervision;
+
+        char sequence;
+        bool lowBat;
+    };
+
+    std::map<uint32_t, sensorState_t> sensorStatusMap;
+    std::map<uint32_t, keypadState_t> keypadStatusMap;
+    uint64_t lastKeyfobPayload;
 };
 
 #endif

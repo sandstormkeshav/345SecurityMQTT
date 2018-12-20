@@ -21,7 +21,7 @@ class Mqtt : public mosqpp::mosquittopp
     public:
         Mqtt(const char *id, const char *host, int port, const char *username, const char *password, const char *will_topic, const char *will_message);
         ~Mqtt();
-        bool send(const char * _topic, const char * _message);
+        bool send(const char * _topic, const char * _message, int qos=1);
         bool set_will(const char * _topic, const char * _message);
 };
 

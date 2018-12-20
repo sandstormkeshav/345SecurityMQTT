@@ -9,7 +9,7 @@ Mqtt::Mqtt(const char * _id, const char * _host, int _port, const char * _userna
 {
     int version = MQTT_PROTOCOL_V311;
     mosqpp::lib_init();
-    this->keepalive = 30;    
+    this->keepalive = 30;
     this->id = _id;
     this->port = _port;
     this->host = _host;
@@ -62,10 +62,10 @@ void Mqtt::on_connect(int rc)
 
 void Mqtt::on_publish(int mid)
 {
-    std::cout << ">> Mqtt - Message (" << mid << ") published " << std::endl;
+    //std::cout << ">> Mqtt - Message (" << mid << ") published " << std::endl;
 }
 
-bool Mqtt::send(const char * _topic, const char * _message)
+bool Mqtt::send(const char * _topic, const char * _message, int qos)
 {
     // Send - depending on QoS, mosquitto lib managed re-submission this the thread
     //
@@ -76,6 +76,7 @@ bool Mqtt::send(const char * _topic, const char * _message)
     // * qos (0,1,2)
     // * retain (boolean) - indicates if message is retained on broker or not
     // Should return MOSQ_ERR_SUCCESS
-    int ret = publish(NULL, _topic, strlen(_message), _message, 1, true);
+    std::cout << _topic << "    " << _message << ((qos==0)?"*":"") << std::endl;
+    int ret = publish(NULL, _topic, strlen(_message), _message, qos, true);
     return ( ret == MOSQ_ERR_SUCCESS );
 }
