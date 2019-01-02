@@ -48,10 +48,11 @@ Modify `mqtt_config.h` to specify the host, port, username, and password of your
 
 ### MQTT Message Format
 
-| **Topic**                                   | **Payload**         |
-| /security/sensors345/sensor/<txid>/loop<N>  | OPEN or CLOSED      |
-| /security/sensors345/sensor/<txid>/tamper   | TAMPER or OK        |
-| /security/sensors345/sensor/<txid>/battery  | LOW or OK           |
-| /security/sensors345/keypad/<txid>/keypress | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, *, #, STAY, AWAY, FIRE, POLICE |
-| /security/sensors345/keyfob/<txid>/keypress |  STAY, AWAY, DISARM, AUX |
+| Topic                                           | Payload                 |
+|-------------------------------------------------|-------------------------|
+| /security/sensors345/sensor/`<txid>`/loop`<N>`  | `OPEN` or `CLOSED`      |
+| /security/sensors345/sensor/`<txid>`/tamper     | `TAMPER` or `OK`        |
+| /security/sensors345/sensor/`<txid>`/battery    | `LOW` or `OK`           |
+| /security/sensors345/keypad/`<txid>`/keypress   | `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `*`, `#`, `STAY`, `AWAY`, `FIRE`, `POLICE` |
+| /security/sensors345/keyfob/`<txid>`/keypress   | `STAY`, `AWAY`, `DISARM`, `AUX` |
 
