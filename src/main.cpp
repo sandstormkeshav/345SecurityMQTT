@@ -10,12 +10,14 @@
 #include <csignal>
 #include <unistd.h>
 #include <sys/time.h>
-
+#include <cstdlib>
 
 // Init MQTT, including will in case of disconnection
 // TODO: Will doesn't seem to be working with HA as expected
-Mqtt mqtt = Mqtt("sensors345", MQTT_HOST, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD, "/security/sensors345/rx_status", "FAILED");
-DigitalDecoder dDecoder(mqtt);
+
+// globals?  yuck
+Mqtt mqtt;// = Mqtt("sensors345", MQTT_HOST, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD, "/security/sensors345/rx_status", "FAILED");
+DigitalDecoder dDecoder;//(mqtt);
 AnalogDecoder aDecoder;
 
 float magLut[0x10000];
@@ -27,6 +29,30 @@ void alarmHandler(int signal)
 
 int main()
 {
+    const char *mqttHost = std::getenv("MQTT_HOST");
+    if (strlen(mqttHost) == 0)
+    {
+        mqttHost = MQTT_HOST;
+    }
+    const char *mqttPortStr = std::getenv("MQTT_PORT");
+    int mqttPort = MQTT_PORT;
+    if (strlen(mqttPortStr) > 0)
+    {
+        mqttPort = std::stoi(mqttPortStr);
+    }
+    const char *mqttUsername = std::getenv("MQTT_USERNAME");
+    if (strlen(mqttUsername) == 0)
+    {
+        mqttUsername = MQTT_USERNAME;
+    }
+    const char *mqttPassword = std::getenv("MQTT_PASSWORD");
+    if (strlen(mqttPassword) == 0)
+    {
+        mqttPassword = MQTT_PASSWORD;
+    }
+    
+    mqtt = Mqtt("sensors345", mqttHost, mqttPort, mqttUsername, mqttPassword, "/security/sensors345/rx_status", "FAILED");
+    dDecoder = DigitalDecoder(mqtt);
     //
     // Open the device
     //
