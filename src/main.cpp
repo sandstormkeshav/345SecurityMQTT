@@ -17,10 +17,10 @@
 
 float magLut[0x10000];
 
-void alarmHandler(int signal)
-{
-    dDecoder.setRxGood(false);
-}
+// void alarmHandler(int signal)
+// {
+//     dDecoder.setRxGood(false);
+// }
 
 int main()
 {
@@ -148,7 +148,7 @@ int main()
     };
 
     // Setup watchdog to check for a common-mode failure (e.g. antenna disconnection)
-    std::signal(SIGALRM, alarmHandler);
+    //std::signal(SIGALRM, alarmHandler);
   
     // Initialize RX state to good
     dDecoder.setRxGood(true);
