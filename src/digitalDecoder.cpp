@@ -169,9 +169,9 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     currentState.lastUpdateTime = now.tv_sec;
     currentState.hasLostSupervision = false;
 
-    currentState.loop1 = payload & 0x000000800000;
-    currentState.loop2 = payload & 0x000000200000;
-    currentState.loop3 = payload & 0x000000100000;
+    currentState.loop1 = payload &  0x000000800000;
+    currentState.loop2 = payload &  0x000000200000;
+    currentState.loop3 = payload &  0x000000100000;
     currentState.tamper = payload & 0x000000400000;
     currentState.lowBat = payload & 0x000000020000;
 
@@ -272,7 +272,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 || sof == 0xA) {
+        if (sof == 0x2 || sof == 0xA || sof == 0xC) {
             // 2GIG brand
             polynomial = 0x18050;
         } else {
