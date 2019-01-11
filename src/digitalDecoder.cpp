@@ -272,7 +272,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 || sof == 0xA || sof == 0xC) {
+        if (sof == 0x2 || sof == 0xA || sof == 0xC || sof == 0x4) {
             // 2GIG brand
             polynomial = 0x18050;
         } else {
