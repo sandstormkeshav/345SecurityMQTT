@@ -46,7 +46,7 @@ int main()
         mqttPassword = MQTT_PASSWORD;
     }
     
-    Mqtt mqtt = Mqtt("sensors345", mqttHost, mqttPort, mqttUsername, mqttPassword, "/security/sensors345/rx_status", "FAILED");
+    Mqtt mqtt = Mqtt("sensors345", mqttHost, mqttPort, mqttUsername, mqttPassword, "security/sensors345/rx_status", "FAILED");
     DigitalDecoder dDecoder = DigitalDecoder(mqtt);
     AnalogDecoder aDecoder;
     

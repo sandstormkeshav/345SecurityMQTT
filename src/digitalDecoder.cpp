@@ -27,7 +27,7 @@
 #define RX_GOOD_MIN_SEC (60)
 #define UPDATE_MIN_SEC (60)
 
-#define BASE_TOPIC "/security/sensors345/"
+#define BASE_TOPIC "security/sensors345/"
 #define SENSOR_TOPIC BASE_TOPIC"sensor/"
 #define KEYFOB_TOPIC BASE_TOPIC"keyfob/"
 #define KEYPAD_TOPIC BASE_TOPIC"keypad/"
@@ -272,7 +272,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 || sof == 0xA || sof == 0xC || sof == 0x4) {
+        if (sof == 0x2 || sof == 0xA || sof == 0xC || sof == 0x4 || sof == 0x3) {
             // 2GIG brand
             polynomial = 0x18050;
         } else {
