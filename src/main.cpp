@@ -25,23 +25,23 @@ float magLut[0x10000];
 int main()
 {
     const char *mqttHost = std::getenv("MQTT_HOST");
-    if (std::char_traits<char>::length(mqttHost) == 0)
+    if ((mqttHost == NULL) || (std::char_traits<char>::length(mqttHost) == 0))
     {
         mqttHost = MQTT_HOST;
     }
     const char *mqttPortStr = std::getenv("MQTT_PORT");
     int mqttPort = MQTT_PORT;
-    if (std::char_traits<char>::length(mqttPortStr) > 0)
+    if ((mqttPortStr) && (std::char_traits<char>::length(mqttPortStr) > 0))
     {
         mqttPort = std::stoi(mqttPortStr);
     }
     const char *mqttUsername = std::getenv("MQTT_USERNAME");
-    if (std::char_traits<char>::length(mqttUsername) == 0)
+    if ((mqttUsername == NULL) || (std::char_traits<char>::length(mqttUsername) == 0))
     {
         mqttUsername = MQTT_USERNAME;
     }
     const char *mqttPassword = std::getenv("MQTT_PASSWORD");
-    if (std::char_traits<char>::length(mqttPassword) == 0)
+    if ((mqttPassword == NULL) || (std::char_traits<char>::length(mqttPassword) == 0))
     {
         mqttPassword = MQTT_PASSWORD;
     }
