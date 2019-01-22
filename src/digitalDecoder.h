@@ -53,6 +53,8 @@ protected:
     {
         uint64_t lastUpdateTime;
         bool hasLostSupervision;
+        
+        std::string phrase;
 
         char sequence;
         bool lowBat;

@@ -119,6 +119,7 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
         std::ostringstream topic;
         topic << KEYPAD_TOPIC << serial << "/keypress";
         char c = ((payload & 0x000000F00000) >> 20);
+        
         std::string key;
         if (c == 0xA)
         {
@@ -153,6 +154,15 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
             key = (c + '0');
         }
         mqtt.send(topic.str().c_str(), key.c_str());
+        
+        if ((c == 0xB || (c >= 1 && c <= 9)) && (currentState.lastUpdateTime <= (lastState.lastUpdateTime + 2)) && (lastState.phrase.length() < 10))
+        {
+            currentState.phrase = lastState.phrase + key;
+            
+            std::ostringstream phraseTopic;
+            phraseTopic << KEYPAD_TOPIC << serial << "/keyphrase";
+            mqtt.send(phraseTopic.str().c_str(), currentState.phrase.c_str());
+        }
     }
 
     keypadStatusMap[serial] = currentState;
