@@ -84,7 +84,7 @@ void DigitalDecoder::updateKeyfobState(uint32_t serial, uint64_t payload)
     {
         key = "UNK";
     }
-    mqtt.send(topic.str().c_str(), key.c_str());
+    mqtt.send(topic.str().c_str(), key.c_str(), 1, false);
 
     lastKeyfobPayload = payload;
 }
@@ -153,7 +153,7 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
         {
             key = (c + '0');
         }
-        mqtt.send(topic.str().c_str(), key.c_str());
+        mqtt.send(topic.str().c_str(), key.c_str(), 1, false);
         
         if ((c == 0xB || (c >= 1 && c <= 9)) && (currentState.lastUpdateTime <= (lastState.lastUpdateTime + 2)) && (lastState.phrase.length() < 10))
         {
@@ -161,11 +161,15 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
             
             std::ostringstream phraseTopic;
             phraseTopic << KEYPAD_TOPIC << serial << "/keyphrase";
-            mqtt.send(phraseTopic.str().c_str(), currentState.phrase.c_str());
+            mqtt.send(phraseTopic.str().c_str(), currentState.phrase.c_str(), 1, false);
         }
+        else if (c == 0xB || (c >= 1 && c <= 9))
+        {
+            currentState.phrase = key;
+        }
+        
+        keypadStatusMap[serial] = currentState;
     }
-
-    keypadStatusMap[serial] = currentState;
 }
 
 void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)

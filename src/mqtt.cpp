@@ -65,7 +65,7 @@ void Mqtt::on_publish(int mid)
     //std::cout << ">> Mqtt - Message (" << mid << ") published " << std::endl;
 }
 
-bool Mqtt::send(const char * _topic, const char * _message, int qos)
+bool Mqtt::send(const char * _topic, const char * _message, int qos, bool retain)
 {
     // Send - depending on QoS, mosquitto lib managed re-submission this the thread
     //
@@ -77,6 +77,6 @@ bool Mqtt::send(const char * _topic, const char * _message, int qos)
     // * retain (boolean) - indicates if message is retained on broker or not
     // Should return MOSQ_ERR_SUCCESS
     std::cout << _topic << "    " << _message << ((qos==0)?"*":"") << std::endl;
-    int ret = publish(NULL, _topic, strlen(_message), _message, qos, true);
+    int ret = publish(NULL, _topic, strlen(_message), _message, qos, retain);
     return ( ret == MOSQ_ERR_SUCCESS );
 }
