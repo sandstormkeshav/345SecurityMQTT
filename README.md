@@ -46,14 +46,31 @@ Modify `mqtt_config.h` to specify the host, port, username, and password of your
 ### Running
   `./345toMqtt`
 
+#### Command line flags
+| Flag          | Meaning   | Default    |
+|---------------|-----------|------------|
+| `-d` <int>    | Device id | 0          |
+| `-f` <int>    | Frequency | 345000000  |
+
+#### Environment variables
+
+These environment variables will override the values set in `mqtt_config.h`
+
+| Variable name   | Meaning                                          |
+|-----------------|--------------------------------------------------|
+| `MQTT_HOST`     | Hostname or IP address of the MQTT server        |
+| `MQTT_PORT`     | Port of the MQTT server                          |
+| `MQTT_USERNAME` | Username to use for logging into the MQTT server |
+| `MQTT_PASSWORD` | Password for the provided username               |
+
 ### MQTT Message Format
 
-| Topic                                           | Payload                 | Retain |
-|-------------------------------------------------|-------------------------|--------|
-| security/sensors345/sensor/`<txid>`/loop`<N>`   | `OPEN` or `CLOSED`      | Yes    |
-| security/sensors345/sensor/`<txid>`/tamper      | `TAMPER` or `OK`        | Yes    |
-| security/sensors345/sensor/`<txid>`/battery     | `LOW` or `OK`           | Yes    |
-| security/sensors345/keypad/`<txid>`/keypress    | `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `*`, `#`, `STAY`, `AWAY`, `FIRE`, `POLICE` | No |
-| security/sensors345/keypad/`<txid>`/keyphrase   | Numbers entered within 2 seconds of each other.  Regex: `[0-9]{2,}` | No |
-| security/sensors345/keyfob/`<txid>`/keypress    | `STAY`, `AWAY`, `DISARM`, `AUX` | No |
+| Topic                                               | Payload                 | Retain |
+|-----------------------------------------------------|-------------------------|--------|
+| security/sensors345/sensor/`<txid>`/loop`<N>`       | `OPEN` or `CLOSED`      | Yes    |
+| security/sensors345/sensor/`<txid>`/tamper          | `TAMPER` or `OK`        | Yes    |
+| security/sensors345/sensor/`<txid>`/battery         | `LOW` or `OK`           | Yes    |
+| security/sensors345/keypad/`<txid>`/keypress        | `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `*`, `#`, `STAY`, `AWAY`, `FIRE`, `POLICE` | No |
+| security/sensors345/keypad/`<txid>`/keyphrase/<LEN> | Numbers entered within 2 seconds of each other.  Regex: `[0-9]{2,}` | No |
+| security/sensors345/keyfob/`<txid>`/keypress        | `STAY`, `AWAY`, `DISARM`, `AUX` | No |
 
