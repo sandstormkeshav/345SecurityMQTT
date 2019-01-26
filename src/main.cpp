@@ -22,7 +22,7 @@ float magLut[0x10000];
 //     dDecoder.setRxGood(false);
 // }
 
-int main()
+int main(int argc, char ** argv)
 {
     const char *mqttHost = std::getenv("MQTT_HOST");
     if ((mqttHost == NULL) || (std::char_traits<char>::length(mqttHost) == 0))
@@ -50,6 +50,26 @@ int main()
     DigitalDecoder dDecoder = DigitalDecoder(mqtt);
     AnalogDecoder aDecoder;
     
+    int devId = 0;
+    int freq = 345000000;
+    char c;
+    while ((c = getopt(argc, argv, "d:f:")) != -1)
+    {
+        switch(c)
+        {
+            case 'd':
+            {
+                devId = atoi(optarg);
+                break;
+            }
+            case 'f':
+            {
+                freq = atoi(optarg);
+                break;
+            }
+        }
+    }
+    
     //
     // Open the device
     //
@@ -61,7 +81,7 @@ int main()
         
     rtlsdr_dev_t *dev = nullptr;
         
-    if(rtlsdr_open(&dev, 0) < 0)
+    if(rtlsdr_open(&dev, devId) < 0)
     {
         std::cout << "Failed to open device" << std::endl;
         return -1;
@@ -70,7 +90,7 @@ int main()
     //
     // Set the frequency
     //
-    if(rtlsdr_set_center_freq(dev, 345000000) < 0)
+    if(rtlsdr_set_center_freq(dev, freq) < 0)
     {
         std::cout << "Failed to set frequency" << std::endl;
         return -1;
