@@ -58,7 +58,7 @@ int main(int argc, char ** argv)
     
     int devId = 0;
     int freq = 345000000;
-    char c = -1;
+    unsigned char c = -1;
     while ((c = getopt(argc, argv, "hd:f:")) != -1)
     {
         switch(c)
