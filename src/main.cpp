@@ -53,8 +53,10 @@ int main(int argc, char ** argv)
     int devId = 0;
     int freq = 345000000;
     char c;
-    while ((c = getopt(argc, argv, "d:f:")) != -1)
+    int loopcount = 10;
+    while (loopcount-- > 0 && (c = getopt(argc, argv, "d:f:")) != -1)
     {
+        std::cout << "\"" << c << "\" = " << optarg << std::endl;
         switch(c)
         {
             case 'd':
