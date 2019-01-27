@@ -155,7 +155,7 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
         }
         mqtt.send(topic.str().c_str(), key.c_str(), 1, false);
         
-        if ((c == 0xB || (c >= 1 && c <= 9)) && (currentState.lastUpdateTime <= (lastState.lastUpdateTime + 2)) && (lastState.phrase.length() < 10))
+        if ((c >= 1 && c <= 0xC) && (currentState.lastUpdateTime <= (lastState.lastUpdateTime + 2)) && (lastState.phrase.length() < 10))
         {
             currentState.phrase = lastState.phrase + key;
             

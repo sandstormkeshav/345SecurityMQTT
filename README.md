@@ -71,6 +71,6 @@ These environment variables will override the values set in `mqtt_config.h`
 | security/sensors345/sensor/`<txid>`/tamper          | `TAMPER` or `OK`        | Yes    |
 | security/sensors345/sensor/`<txid>`/battery         | `LOW` or `OK`           | Yes    |
 | security/sensors345/keypad/`<txid>`/keypress        | `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `*`, `#`, `STAY`, `AWAY`, `FIRE`, `POLICE` | No |
-| security/sensors345/keypad/`<txid>`/keyphrase/<LEN> | Numbers entered within 2 seconds of each other.  Regex: `[0-9]{2,}` | No |
+| security/sensors345/keypad/`<txid>`/keyphrase/<LEN> | Numbers (or `#` or `*` entered within 2 seconds of each other.  Regex: `[*#0-9]{2,}` | No |
 | security/sensors345/keyfob/`<txid>`/keypress        | `STAY`, `AWAY`, `DISARM`, `AUX` | No |
 
