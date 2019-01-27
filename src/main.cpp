@@ -58,7 +58,7 @@ int main(int argc, char ** argv)
     
     int devId = 0;
     int freq = 345000000;
-    char c;
+    char c = -1;
     while ((c = getopt(argc, argv, "hd:f:")) != -1)
     {
         switch(c)
@@ -80,6 +80,7 @@ int main(int argc, char ** argv)
             }
             default: // including '?' unknown character
             {
+                std::cerr << "Unknown flag '" << c << "' (" << std::dec << c << ")" << std::endl;
                 usage(argv[0]);
                 exit(1);
             }
