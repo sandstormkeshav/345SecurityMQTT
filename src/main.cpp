@@ -80,7 +80,7 @@ int main(int argc, char ** argv)
             }
             default: // including '?' unknown character
             {
-                std::cerr << "Unknown flag '" << c << "' (" << std::dec << c << ")" << std::endl;
+                std::cerr << "Unknown flag '" << c << "' (" << +c << ") " << argc << std::endl;
                 usage(argv[0]);
                 exit(1);
             }
