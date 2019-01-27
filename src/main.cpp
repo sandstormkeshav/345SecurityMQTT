@@ -22,6 +22,12 @@ float magLut[0x10000];
 //     dDecoder.setRxGood(false);
 // }
 
+void usage(const char *argv0)
+{
+    std::cout << "Usage: " << std::endl
+        << argv0 << " [-d <device-id>] [-f <frequency in Hz]" << std::endl;
+}
+
 int main(int argc, char ** argv)
 {
     const char *mqttHost = std::getenv("MQTT_HOST");
@@ -53,12 +59,15 @@ int main(int argc, char ** argv)
     int devId = 0;
     int freq = 345000000;
     char c;
-    int loopcount = 10;
-    while (loopcount-- > 0 && (c = getopt(argc, argv, "d:f:")) != -1)
+    while ((c = getopt(argc, argv, "hd:f:")) != -1)
     {
-        std::cout << "\"" << c << "\" = " << optarg << std::endl;
         switch(c)
         {
+            case 'h':
+            {
+                usage(argv[0]);
+                exit(0);
+            }
             case 'd':
             {
                 devId = atoi(optarg);
@@ -68,6 +77,11 @@ int main(int argc, char ** argv)
             {
                 freq = atoi(optarg);
                 break;
+            }
+            default: // including '?' unknown character
+            {
+                usage(argv[0]);
+                exit(1);
             }
         }
     }
