@@ -102,6 +102,9 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
 
     currentState.sequence = (payload & 0xF00000000000) >> 44;
     currentState.lowBat = payload & 0x000000020000;
+    
+    bool supervised = payload & 0x000000040000;
+    if (supervised) return;
 
     auto found = keypadStatusMap.find(serial);
     if (found == keypadStatusMap.end())
@@ -187,9 +190,10 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     currentState.loop2 = payload &  0x000000200000;
     currentState.loop3 = payload &  0x000000100000;
     currentState.tamper = payload & 0x000000400000;
-    currentState.lowBat = payload & 0x000000020000;
+    currentState.lowBat = payload & 0x000000080000;
 
     bool supervised = payload & 0x000000040000;
+    // bool repeated = payload & 0x000000020000;
 
     //std::cout << "Payload:" << std::hex << payload << " Serial:" << std::dec << serial << std::boolalpha << " Loop1:" << currentState.loop1 << std::endl;
 
@@ -286,12 +290,24 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 || sof == 0xA || sof == 0xC || sof == 0x4 || sof == 0x3) {
+        if (sof == 0x2 /* 2gig smoke */ || sof == 0x3 /* 2gig panic */ || sof == 0x4 /* 2gig PIR */
+            || sof == 0x7 /* 2gig flood/temp */ || sof == 0x9 /* 2gig glass break */
+            || sof == 0xA /* 2gig door window */ || sof == 0xB /* 2gig carbon monoxide */
+            || sof == 0xC /* 2gig Tilt */ || sof == 0xF /* Remote keyfob */) {
             // 2GIG brand
             polynomial = 0x18050;
-        } else {
-            // sof == 0x8
+        } else if (sof == 0x8) {
+            // Honeywell Sensor
+            printf("Honeywell Sensor");
             polynomial = 0x18005;
+        } else if (sof == 0xD || sof == 0xE) {
+            // Vivint
+            printf("Vivint Sensor %x", sof);
+            polynomial = 0x18050; // Don't know if this is correct
+        } else {
+            // Something else?
+            printf("Unknown Brand Sensor %x", sof);
+            polynomial = 0x18050;
         }
     }
     uint64_t sum = payload & (~SYNC_MASK);
