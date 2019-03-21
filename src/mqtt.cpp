@@ -30,6 +30,7 @@ Mqtt::Mqtt(const char * _id, const char * _host, int _port, const char * _userna
             std::cout <<">> Mqtt - Failed to set LWT message!" << std::endl;
         }
     }
+    reinitialise(this->id, true);
     // non blocking connection to broker request;
     connect_async(host, port, keepalive);
     // Start thread managing connection / publish / subscribekeepalive);
@@ -49,7 +50,6 @@ bool Mqtt::set_will(const char * _topic, const char * _message)
 
 void Mqtt::on_disconnect(int rc) {
     std::cout << ">> Mqtt - disconnected(" << rc << ")" << std::endl;
-    reinitialise(this->id, false);
 }
 
 void Mqtt::on_connect(int rc)
