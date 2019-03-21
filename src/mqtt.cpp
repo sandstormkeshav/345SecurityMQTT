@@ -49,7 +49,7 @@ bool Mqtt::set_will(const char * _topic, const char * _message)
 
 void Mqtt::on_disconnect(int rc) {
     std::cout << ">> Mqtt - disconnected(" << rc << ")" << std::endl;
-    reinitialise(this->_id, false);
+    reinitialise(this->id, false);
 }
 
 void Mqtt::on_connect(int rc)
