@@ -15,10 +15,12 @@ Mqtt::Mqtt(const char * _id, const char * _host, int _port, const char * _userna
     this->host = _host;
     this->will_topic = _will_topic;
     this->will_message = _will_message;
+    reinitialise(this->id, true);
     // Set version to 3.1.1
     opts_set(MOSQ_OPT_PROTOCOL_VERSION, &version);
     // Set username and password if non-null
     if (strlen(_username) > 0 && strlen(_password) > 0) {
+        std::cerr << "Using credentials: " << _username << ":" << _password << std::endl;
         username_pw_set(_username, _password);
     }
     // Set last will and testament (LWT) message
@@ -30,7 +32,7 @@ Mqtt::Mqtt(const char * _id, const char * _host, int _port, const char * _userna
             std::cout <<">> Mqtt - Failed to set LWT message!" << std::endl;
         }
     }
-    reinitialise(this->id, true);
+
     // non blocking connection to broker request;
     connect_async(host, port, keepalive);
     // Start thread managing connection / publish / subscribekeepalive);
