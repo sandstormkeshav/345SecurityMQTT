@@ -186,9 +186,9 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     currentState.lastUpdateTime = now.tv_sec;
     currentState.hasLostSupervision = false;
 
-    currentState.loop1 = payload &  0x000000800000;
-    currentState.loop2 = payload &  0x000000200000;
-    currentState.loop3 = payload &  0x000000100000;
+    currentState.loop1 = payload  & 0x000000800000;
+    currentState.loop2 = payload  & 0x000000200000;
+    currentState.loop3 = payload  & 0x000000100000;
     currentState.tamper = payload & 0x000000400000;
     currentState.lowBat = payload & 0x000000080000;
 
@@ -209,11 +209,16 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
         lastState.loop3 = !currentState.loop3;
         lastState.tamper = !currentState.tamper;
         lastState.lowBat = !currentState.lowBat;
+        lastState.lastUpdateTime = 0;
     }
     else
     {
         lastState = found->second;
     }
+    
+    // Since the sensor will frequently blast out the same signal many times, we only want to treat
+    // the first detected signal as the supervisory signal. 
+    bool supervised = (payload & 0x000000040000) && ((currentState.lastUpdateTime - lastState.lastUpdateTime) > 2);
 
     if ((currentState.loop1 != lastState.loop1) || supervised)
     {
