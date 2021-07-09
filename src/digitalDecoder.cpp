@@ -192,7 +192,7 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     currentState.tamper = payload & 0x000000400000;
     currentState.lowBat = payload & 0x000000080000;
 
-    bool supervised = payload & 0x000000040000;
+    // bool supervised = payload & 0x000000040000;
     // bool repeated = payload & 0x000000020000;
 
     //std::cout << "Payload:" << std::hex << payload << " Serial:" << std::dec << serial << std::boolalpha << " Loop1:" << currentState.loop1 << std::endl;
@@ -295,11 +295,21 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 /* 2gig smoke */ || sof == 0x3 /* 2gig panic */ || sof == 0x4 /* 2gig PIR */
-            || sof == 0x7 /* 2gig flood/temp */ || sof == 0x9 /* 2gig glass break */
-            || sof == 0xA /* 2gig door window */ || sof == 0xB /* 2gig carbon monoxide */
-            || sof == 0xC /* 2gig Tilt */ || sof == 0xF /* Remote keyfob */) {
+        if (sof == 0x2 /* 2gig smoke */ 
+            || sof == 0x3 /* 2gig panic */ 
+            || sof == 0x4 /* 2gig PIR */
+            || sof == 0x7 /* 2gig flood/temp */ 
+            || sof == 0x9 /* 2gig glass break */
+            || sof == 0xA /* 2gig door window */ 
+            || sof == 0xB /* 2gig carbon monoxide */
+            || sof == 0xC /* 2gig Tilt */ 
+            || sof == 0xF /* Remote keyfob */) {
             // 2GIG brand
+            #ifdef __arm__
+            printf("2GIG Sensor %llu/0x%llX", sof, sof);
+            #else
+            printf("2GIG Sensor %lu/0x%lX", sof, sof);
+            #endif
             polynomial = 0x18050;
         } else if (sof == 0x8) {
             // Honeywell Sensor
@@ -307,13 +317,22 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
             polynomial = 0x18005;
         } else if (sof == 0xD || sof == 0xE) {
             // Vivint
-            printf("Vivint Sensor %x", sof);
+            #ifdef __arm__
+            printf("Vivint Sensor %llu/0x%llX", sof, sof);
+            #else
+            printf("Vivint Sensor %lu/0x%lX", sof, sof);
+            #endif
             polynomial = 0x18050; // Don't know if this is correct
         } else {
             // Something else?
-            printf("Unknown Brand Sensor %x", sof);
+            #ifdef __arm__
+            printf("Unknown Brans Sensor %llu/0x%llX", sof, sof);
+            #else
+            printf("Unknown Brand Sensor %lu/0x%lX", sof, sof);
+            #endif
             polynomial = 0x18050;
         }
+        printf(" - ");
     }
     uint64_t sum = payload & (~SYNC_MASK);
     uint64_t current_divisor = polynomial << 31;
@@ -337,7 +356,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
 void DigitalDecoder::handlePayload(uint64_t payload)
 {
     uint64_t ser = (payload & 0x0FFFFF000000) >> 24;
-    uint64_t typ = (payload & 0x000000FF0000) >> 16;
+    uint64_t typ = (payload & 0x000000FF0000) >> 16; 
 
     const bool validSensorPacket = isPayloadValid(payload);
     const bool validKeypadPacket = isPayloadValid(payload, 0x18050) && (typ & 0x01);
@@ -363,8 +382,9 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     //
     // Tell the world
     //
-    if(validSensorPacket && keypadStatusMap.find(ser) == keypadStatusMap.end())
+    if(validSensorPacket && !validKeypadPacket && !validKeyfobPacket && keypadStatusMap.find(ser) == keypadStatusMap.end())
     {
+        printf("Sensor Packet\n");
         // We received a valid packet so the receiver must be working
         setRxGood(true);
         // Update the device
@@ -372,11 +392,13 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     }
     else if (validKeypadPacket)
     {
+        printf("Keypad Packet\n");
         setRxGood(true);
         updateKeypadState(ser, payload);
     }
     else if (validKeyfobPacket)
     {
+        printf("Keyfob Packet\n");
         setRxGood(true);
         updateKeyfobState(ser, payload);
     }
