@@ -13,14 +13,13 @@
 #include <stdint.h>
 #include <csignal>
 
-
 // Pulse checks seem to be about 60-70 minutes apart
-#define RX_TIMEOUT_MIN      (90)
+#define RX_TIMEOUT_MIN (90)
 
 // Give each sensor 3 intervals before we flag a problem
-#define SENSOR_TIMEOUT_MIN  (90*5)
+#define SENSOR_TIMEOUT_MIN (90 * 5)
 
-#define SYNC_MASK    0xFFFF000000000000ul
+#define SYNC_MASK 0xFFFF000000000000ul
 #define SYNC_PATTERN 0xFFFE000000000000ul
 
 // Don't send these messages more than once per minute unless there is a state change
@@ -28,9 +27,9 @@
 #define UPDATE_MIN_SEC (60)
 
 #define BASE_TOPIC "security/sensors345/"
-#define SENSOR_TOPIC BASE_TOPIC"sensor/"
-#define KEYFOB_TOPIC BASE_TOPIC"keyfob/"
-#define KEYPAD_TOPIC BASE_TOPIC"keypad/"
+#define SENSOR_TOPIC BASE_TOPIC "sensor/"
+#define KEYFOB_TOPIC BASE_TOPIC "keyfob/"
+#define KEYPAD_TOPIC BASE_TOPIC "keypad/"
 
 void DigitalDecoder::setRxGood(bool state)
 {
@@ -47,7 +46,7 @@ void DigitalDecoder::setRxGood(bool state)
     }
 
     // Reset watchdog either way
-    alarm(RX_TIMEOUT_MIN*60);
+    alarm(RX_TIMEOUT_MIN * 60);
 
     rxGood = state;
     lastRxGoodUpdateTime = now.tv_sec;
@@ -102,9 +101,10 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
 
     currentState.sequence = (payload & 0xF00000000000) >> 44;
     currentState.lowBat = payload & 0x000000020000;
-    
+
     bool supervised = payload & 0x000000040000;
-    if (supervised) return;
+    if (supervised)
+        return;
 
     auto found = keypadStatusMap.find(serial);
     if (found == keypadStatusMap.end())
@@ -122,7 +122,7 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
         std::ostringstream topic;
         topic << KEYPAD_TOPIC << serial << "/keypress";
         char c = ((payload & 0x000000F00000) >> 20);
-        
+
         std::string key;
         if (c == 0xA)
         {
@@ -157,11 +157,11 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
             key = (c + '0');
         }
         mqtt.send(topic.str().c_str(), key.c_str(), 1, false);
-        
+
         if ((c >= 1 && c <= 0xC) && (currentState.lastUpdateTime <= (lastState.lastUpdateTime + 2)) && (lastState.phrase.length() < 10))
         {
             currentState.phrase = lastState.phrase + key;
-            
+
             std::ostringstream phraseTopic;
             phraseTopic << KEYPAD_TOPIC << serial << "/keyphrase/" << currentState.phrase.length();
             mqtt.send(phraseTopic.str().c_str(), currentState.phrase.c_str(), 1, false);
@@ -170,7 +170,7 @@ void DigitalDecoder::updateKeypadState(uint32_t serial, uint64_t payload)
         {
             currentState.phrase = key;
         }
-        
+
         keypadStatusMap[serial] = currentState;
     }
 }
@@ -186,9 +186,9 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     currentState.lastUpdateTime = now.tv_sec;
     currentState.hasLostSupervision = false;
 
-    currentState.loop1 = payload  & 0x000000800000;
-    currentState.loop2 = payload  & 0x000000200000;
-    currentState.loop3 = payload  & 0x000000100000;
+    currentState.loop1 = payload & 0x000000800000;
+    currentState.loop2 = payload & 0x000000200000;
+    currentState.loop3 = payload & 0x000000100000;
     currentState.tamper = payload & 0x000000400000;
     currentState.lowBat = payload & 0x000000080000;
 
@@ -215,9 +215,9 @@ void DigitalDecoder::updateSensorState(uint32_t serial, uint64_t payload)
     {
         lastState = found->second;
     }
-    
+
     // Since the sensor will frequently blast out the same signal many times, we only want to treat
-    // the first detected signal as the supervisory signal. 
+    // the first detected signal as the supervisory signal.
     bool supervised = (payload & 0x000000040000) && ((currentState.lastUpdateTime - lastState.lastUpdateTime) > 2);
 
     if ((currentState.loop1 != lastState.loop1) || supervised)
@@ -267,9 +267,9 @@ void DigitalDecoder::checkForTimeouts()
     status << "TIMEOUT";
     gettimeofday(&now, nullptr);
 
-    for(const auto &dd : sensorStatusMap)
+    for (const auto &dd : sensorStatusMap)
     {
-        if ((now.tv_sec - dd.second.lastUpdateTime) > SENSOR_TIMEOUT_MIN*60)
+        if ((now.tv_sec - dd.second.lastUpdateTime) > SENSOR_TIMEOUT_MIN * 60)
         {
             if (false == dd.second.hasLostSupervision)
             {
@@ -288,48 +288,55 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     uint64_t sof = (payload & 0xF00000000000) >> 44;
     uint64_t ser = (payload & 0x0FFFFF000000) >> 24;
     uint64_t typ = (payload & 0x000000FF0000) >> 16;
-    uint64_t crc = (payload & 0x00000000FFFF) >>  0;
+    uint64_t crc = (payload & 0x00000000FFFF) >> 0;
 
     //
     // Check CRC
     //
     if (polynomial == 0)
     {
-        if (sof == 0x2 /* 2gig smoke */ 
-            || sof == 0x3 /* 2gig panic */ 
+        if (sof == 0x2    /* 2gig smoke */
+            || sof == 0x3 /* 2gig panic */
             || sof == 0x4 /* 2gig PIR */
-            || sof == 0x7 /* 2gig flood/temp */ 
+            || sof == 0x7 /* 2gig flood/temp */
             || sof == 0x9 /* 2gig glass break */
-            || sof == 0xA /* 2gig door window */ 
+            || sof == 0xA /* 2gig door window */
             || sof == 0xB /* 2gig carbon monoxide */
-            || sof == 0xC /* 2gig Tilt */ 
-            || sof == 0xF /* Remote keyfob */) {
+            || sof == 0xC /* 2gig Tilt */
+            || sof == 0xF /* Remote keyfob */)
+        {
             // 2GIG brand
-            #ifdef __arm__
-            printf("2GIG Sensor %llu/0x%llX", sof, sof);
-            #else
-            printf("2GIG Sensor %lu/0x%lX", sof, sof);
-            #endif
+            // #ifdef __arm__
+            // printf("2GIG Sensor %llu/0x%llX", sof, sof);
+            // #else
+            // printf("2GIG Sensor %lu/0x%lX", sof, sof);
+            // #endif
             polynomial = 0x18050;
-        } else if (sof == 0x8) {
+        }
+        else if (sof == 0x8)
+        {
             // Honeywell Sensor
             printf("Honeywell Sensor");
             polynomial = 0x18005;
-        } else if (sof == 0xD || sof == 0xE) {
-            // Vivint
-            #ifdef __arm__
-            printf("Vivint Sensor %llu/0x%llX", sof, sof);
-            #else
-            printf("Vivint Sensor %lu/0x%lX", sof, sof);
-            #endif
+        }
+        else if (sof == 0xD || sof == 0xE)
+        {
+// Vivint
+#ifdef __arm__
+            printf("Vivint Sensor %llu/0x%llX Payload: %llX", sof, sof, payload);
+#else
+            printf("Vivint Sensor %lu/0x%lX Payload: %lX", sof, sof, payload);
+#endif
             polynomial = 0x18050; // Don't know if this is correct
-        } else {
-            // Something else?
-            #ifdef __arm__
-            printf("Unknown Brans Sensor %llu/0x%llX", sof, sof);
-            #else
-            printf("Unknown Brand Sensor %lu/0x%lX", sof, sof);
-            #endif
+        }
+        else
+        {
+// Something else?
+#ifdef __arm__
+            printf("Unknown Brand Sensor %llu/0x%llX Payload: %llX", sof, sof, payload);
+#else
+            printf("Unknown Brand Sensor %lu/0x%lX Payload: %llX", sof, sof, payload);
+#endif
             polynomial = 0x18050;
         }
         printf(" - ");
@@ -337,13 +344,13 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
     uint64_t sum = payload & (~SYNC_MASK);
     uint64_t current_divisor = polynomial << 31;
 
-    while(current_divisor >= polynomial)
+    while (current_divisor >= polynomial)
     {
-        #ifdef __arm__
-        if(__builtin_clzll(sum) == __builtin_clzll(current_divisor))
-        #else
-        if(__builtin_clzl(sum) == __builtin_clzl(current_divisor))
-        #endif
+#ifdef __arm__
+        if (__builtin_clzll(sum) == __builtin_clzll(current_divisor))
+#else
+        if (__builtin_clzl(sum) == __builtin_clzl(current_divisor))
+#endif
         {
             sum ^= current_divisor;
         }
@@ -356,7 +363,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
 void DigitalDecoder::handlePayload(uint64_t payload)
 {
     uint64_t ser = (payload & 0x0FFFFF000000) >> 24;
-    uint64_t typ = (payload & 0x000000FF0000) >> 16; 
+    uint64_t typ = (payload & 0x000000FF0000) >> 16;
 
     const bool validSensorPacket = isPayloadValid(payload);
     const bool validKeypadPacket = isPayloadValid(payload, 0x18050) && (typ & 0x01);
@@ -365,14 +372,14 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     //
     // Print Packet
     //
- #ifdef __arm__
-    printf("%s Payload: %llX (Serial %llu/%llX, Status %llX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
- #else
-    printf("%s Payload: %lX (Serial %lu/%lX, Status %lX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
- #endif
+    // #ifdef __arm__
+    //     printf("%s Payload: %llX (Serial %llu/%llX, Status %llX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
+    // #else
+    //     printf("%s Payload: %lX (Serial %lu/%lX, Status %lX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
+    // #endif
 
     packetCount++;
-    if(!validSensorPacket && !validKeypadPacket && !validKeyfobPacket)
+    if (!validSensorPacket && !validKeypadPacket && !validKeyfobPacket)
     {
         errorCount++;
         printf("%u/%u packets failed CRC", errorCount, packetCount);
@@ -382,9 +389,9 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     //
     // Tell the world
     //
-    if(validSensorPacket && !validKeypadPacket && !validKeyfobPacket && keypadStatusMap.find(ser) == keypadStatusMap.end())
+    if (validSensorPacket && !validKeypadPacket && !validKeyfobPacket && keypadStatusMap.find(ser) == keypadStatusMap.end())
     {
-        printf("Sensor Packet\n");
+        // printf("Sensor Packet\n");
         // We received a valid packet so the receiver must be working
         setRxGood(true);
         // Update the device
@@ -392,19 +399,17 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     }
     else if (validKeypadPacket)
     {
-        printf("Keypad Packet\n");
+        // printf("Keypad Packet\n");
         setRxGood(true);
         updateKeypadState(ser, payload);
     }
     else if (validKeyfobPacket)
     {
-        printf("Keyfob Packet\n");
+        // printf("Keyfob Packet\n");
         setRxGood(true);
         updateKeyfobState(ser, payload);
     }
 }
-
-
 
 void DigitalDecoder::handleBit(bool value)
 {
@@ -413,13 +418,13 @@ void DigitalDecoder::handleBit(bool value)
     payload <<= 1;
     payload |= (value ? 1 : 0);
 
-//#ifdef __arm__
-//    printf("Got bit: %d, payload is now %llX\n", value?1:0, payload);
-//#else
-//    printf("Got bit: %d, payload is now %lX\n", value?1:0, payload);
-//#endif
+    //#ifdef __arm__
+    //    printf("Got bit: %d, payload is now %llX\n", value?1:0, payload);
+    //#else
+    //    printf("Got bit: %d, payload is now %lX\n", value?1:0, payload);
+    //#endif
 
-    if((payload & SYNC_MASK) == SYNC_PATTERN)
+    if ((payload & SYNC_MASK) == SYNC_PATTERN)
     {
         handlePayload(payload);
         payload = 0;
@@ -438,30 +443,30 @@ void DigitalDecoder::decodeBit(bool value)
 
     static ManchesterState state = LOW_PHASE_A;
 
-    switch(state)
+    switch (state)
     {
-        case LOW_PHASE_A:
-        {
-            state = value ? HIGH_PHASE_B : LOW_PHASE_A;
-            break;
-        }
-        case LOW_PHASE_B:
-        {
-            handleBit(false);
-            state = value ? HIGH_PHASE_A : LOW_PHASE_A;
-            break;
-        }
-        case HIGH_PHASE_A:
-        {
-            state = value ? HIGH_PHASE_A : LOW_PHASE_B;
-            break;
-        }
-        case HIGH_PHASE_B:
-        {
-            handleBit(true);
-            state = value ? HIGH_PHASE_A : LOW_PHASE_A;
-            break;
-        }
+    case LOW_PHASE_A:
+    {
+        state = value ? HIGH_PHASE_B : LOW_PHASE_A;
+        break;
+    }
+    case LOW_PHASE_B:
+    {
+        handleBit(false);
+        state = value ? HIGH_PHASE_A : LOW_PHASE_A;
+        break;
+    }
+    case HIGH_PHASE_A:
+    {
+        state = value ? HIGH_PHASE_A : LOW_PHASE_B;
+        break;
+    }
+    case HIGH_PHASE_B:
+    {
+        handleBit(true);
+        state = value ? HIGH_PHASE_A : LOW_PHASE_A;
+        break;
+    }
     }
 }
 
@@ -469,12 +474,12 @@ void DigitalDecoder::handleData(char data)
 {
     static const int samplesPerBit = 8;
 
-
-    if(data != 0 && data != 1) return;
+    if (data != 0 && data != 1)
+        return;
 
     const bool thisSample = (data == 1);
 
-    if(thisSample == lastSample)
+    if (thisSample == lastSample)
     {
         samplesSinceEdge++;
 
@@ -483,7 +488,7 @@ void DigitalDecoder::handleData(char data)
         //    printf("At %d for %u\n", thisSample?1:0, samplesSinceEdge);
         //}
 
-        if((samplesSinceEdge % samplesPerBit) == (samplesPerBit/2))
+        if ((samplesSinceEdge % samplesPerBit) == (samplesPerBit / 2))
         {
             // This Sample is a new bit
             decodeBit(thisSample);
