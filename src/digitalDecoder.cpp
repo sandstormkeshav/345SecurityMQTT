@@ -339,7 +339,7 @@ bool DigitalDecoder::isPayloadValid(uint64_t payload, uint64_t polynomial) const
 #endif
             polynomial = 0x18050;
         }
-        printf(" - ");
+        // printf(" - ");
     }
     uint64_t sum = payload & (~SYNC_MASK);
     uint64_t current_divisor = polynomial << 31;
@@ -381,6 +381,11 @@ void DigitalDecoder::handlePayload(uint64_t payload)
     packetCount++;
     if (!validSensorPacket && !validKeypadPacket && !validKeyfobPacket)
     {
+#ifdef __arm__
+        printf("%s Payload: %llX (Serial %llu/%llX, Status %llX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
+#else
+        printf("%s Payload: %lX (Serial %lu/%lX, Status %lX)\n", (validSensorPacket | validKeypadPacket | validKeyfobPacket) ? "Valid" : "Invalid", payload, ser, ser, typ);
+#endif
         errorCount++;
         printf("%u/%u packets failed CRC", errorCount, packetCount);
         std::cout << std::endl;
