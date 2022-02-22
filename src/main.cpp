@@ -87,7 +87,7 @@ int main(int argc, char ** argv)
             }
             case 's':
             {
-                sampleRate= = atoi(optarg);
+                sampleRate= atoi(optarg);
                 break;
             }
             default: // including '?' unknown character
