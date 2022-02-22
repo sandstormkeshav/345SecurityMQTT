@@ -59,8 +59,9 @@ int main(int argc, char ** argv)
     int devId = 0;
     int freq = 345000000;
     int gain = 364;
+    int sampleRate = 1000000;
     signed char c;
-    while ((c = getopt(argc, argv, "hd:f:")) != -1)
+    while ((c = getopt(argc, argv, "hd:f:g:s:")) != -1)
     {
         switch(c)
         {
@@ -82,6 +83,11 @@ int main(int argc, char ** argv)
             case 'g':
             {
                 gain = atoi(optarg);
+                break;
+            }
+            case 's':
+            {
+                sampleRate= = atoi(optarg);
                 break;
             }
             default: // including '?' unknown character
@@ -143,7 +149,7 @@ int main(int argc, char ** argv)
     //
     // Set the sample rate
     //
-    if(rtlsdr_set_sample_rate(dev, 1000000) < 0)
+    if(rtlsdr_set_sample_rate(dev, sampleRate) < 0)
     {
         std::cout << "Failed to set sample rate" << std::endl;
         return -1;
