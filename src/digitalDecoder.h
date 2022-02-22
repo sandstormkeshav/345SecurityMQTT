@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 #include <map>
-
+#include <string>
 class DigitalDecoder
 {
   public:
