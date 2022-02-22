@@ -58,6 +58,7 @@ int main(int argc, char ** argv)
     
     int devId = 0;
     int freq = 345000000;
+    int gain = 364;
     signed char c;
     while ((c = getopt(argc, argv, "hd:f:")) != -1)
     {
@@ -76,6 +77,11 @@ int main(int argc, char ** argv)
             case 'f':
             {
                 freq = atoi(optarg);
+                break;
+            }
+            case 'g':
+            {
+                gain = atoi(optarg);
                 break;
             }
             default: // including '?' unknown character
@@ -118,13 +124,15 @@ int main(int argc, char ** argv)
     //
     // Set the gain
     //
+    // For R820T you can set gain to one of the following values:
+    // 0 9 14 27 37 77 87 125 144 157 166 197 207 229 254 280 297 328 338 364 372 386 402 421 434 439 445 480 496
     if(rtlsdr_set_tuner_gain_mode(dev, 1) < 0)
     {
         std::cout << "Failed to set gain mode" << std::endl;
         return -1;
     }
     
-    if(rtlsdr_set_tuner_gain(dev, 350) < 0)
+    if(rtlsdr_set_tuner_gain(dev, gain) < 0)
     {
         std::cout << "Failed to set gain" << std::endl;
         return -1;
