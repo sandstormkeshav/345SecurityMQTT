@@ -219,7 +219,7 @@ int main(int argc, char ** argv)
 
     // Setup watchdog to check for a common-mode failure (e.g. antenna disconnection)
     std::signal(SIGALRM, alarmHandler);
-    alarm(3)
+    alarm(3);
   
     // Initialize RX state to good
     dDecoder.setRxGood(true);
