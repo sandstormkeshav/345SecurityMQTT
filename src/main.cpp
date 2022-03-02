@@ -17,10 +17,10 @@
 
 float magLut[0x10000];
 
-// void alarmHandler(int signal)
-// {
-//     dDecoder.setRxGood(false);
-// }
+ void alarmHandler(int signal)
+ {
+     dDecoder.setRxGood(false);
+ }
 
 void usage(const char *argv0)
 {
@@ -60,8 +60,9 @@ int main(int argc, char ** argv)
     int freq = 345000000;
     int gain = 364;
     int sampleRate = 1000000;
+    int agc = 0;
     signed char c;
-    while ((c = getopt(argc, argv, "hd:f:g:s:")) != -1)
+    while ((c = getopt(argc, argv, "hd:f:g:s:a:")) != -1)
     {
         switch(c)
         {
@@ -88,6 +89,11 @@ int main(int argc, char ** argv)
             case 's':
             {
                 sampleRate= atoi(optarg);
+                break;
+            }
+            case 'a':
+            {
+                agc= atoi(optarg);
                 break;
             }
             default: // including '?' unknown character
@@ -132,19 +138,32 @@ int main(int argc, char ** argv)
     //
     // For R820T you can set gain to one of the following values:
     // 0 9 14 27 37 77 87 125 144 157 166 197 207 229 254 280 297 328 338 364 372 386 402 421 434 439 445 480 496
-    if(rtlsdr_set_tuner_gain_mode(dev, 1) < 0)
-    {
-        std::cout << "Failed to set gain mode" << std::endl;
-        return -1;
+    if(agc) {
+        if(rtlsdr_set_tuner_gain_mode(dev, 0) < 0)
+        {
+            std::cout << "Failed to set AGC gain mode" << std::endl;
+            return -1;
+        }
+        std::cout << "Successfully set gain to AGC " << std::endl;
     }
-    
-    if(rtlsdr_set_tuner_gain(dev, gain) < 0)
-    {
-        std::cout << "Failed to set gain" << std::endl;
-        return -1;
+
+    else {
+        if(rtlsdr_set_tuner_gain_mode(dev, 1) < 0)
+        {
+            std::cout << "Failed to set gain mode" << std::endl;
+            return -1;
+        }
+        
+        if(rtlsdr_set_tuner_gain(dev, gain) < 0)
+        {
+            std::cout << "Failed to set gain" << std::endl;
+            return -1;
+        }
+        std::cout << "Successfully set gain to " << rtlsdr_get_tuner_gain(dev) << std::endl;
     }
+
+
     
-    std::cout << "Successfully set gain to " << rtlsdr_get_tuner_gain(dev) << std::endl;
     
     //
     // Set the sample rate
@@ -199,7 +218,8 @@ int main(int argc, char ** argv)
     };
 
     // Setup watchdog to check for a common-mode failure (e.g. antenna disconnection)
-    //std::signal(SIGALRM, alarmHandler);
+    std::signal(SIGALRM, alarmHandler);
+    alarm(3)
   
     // Initialize RX state to good
     dDecoder.setRxGood(true);
