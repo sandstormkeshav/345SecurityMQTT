@@ -19,7 +19,7 @@ float magLut[0x10000];
 
  void alarmHandler(int signal)
  {
-     dDecoder.setRxGood(false);
+     std::cout << "Error Detected!" << std::endl;
  }
 
 void usage(const char *argv0)
